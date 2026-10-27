@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowDownRight, ArrowUpRight, Loader2 } from "lucide-react";
 
+import { useSetupImageUrls } from "@/hooks/useSetupImageUrls";
+import { extensionForSetupImage } from "@/lib/supabase/trade-images";
 import {
   tradeFormSchema,
   type TradeFormInput,
@@ -12,7 +14,13 @@ import {
 } from "@/lib/validations/trade";
 import { cn, formatCurrency, fromDateTimeLocal, toDateTimeLocal } from "@/lib/utils";
 import { deriveTradeResult } from "@/lib/utils/trading";
-import type { Trade, TradeInput, TradeSide } from "@/types/trade";
+import type {
+  SetupImageChanges,
+  Trade,
+  TradeInput,
+  TradeSide,
+} from "@/types/trade";
+import { SetupImageSlot } from "./SetupImageSlot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,10 +32,19 @@ import {
 } from "@/components/ui/field";
 import { pnlColor, StatusBadge } from "./TradeBadges";
 
+type SlotName = "before" | "after";
+
+type SlotDraft = {
+  change: SetupImageChanges[SlotName];
+  previewUrl: string | null;
+};
+
+const KEPT_SLOT: SlotDraft = { change: { kind: "keep" }, previewUrl: null };
+
 interface TradeFormProps {
   /** When provided the form is in edit mode and pre-filled. */
   trade?: Trade | null;
-  onSubmit: (input: TradeInput) => Promise<void>;
+  onSubmit: (input: TradeInput, images: SetupImageChanges) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
 }
@@ -82,11 +99,31 @@ export function TradeForm({
     mode: "onBlur",
   });
   const { errors, isSubmitting } = form.formState;
+  const [before, setBefore] = useState<SlotDraft>(KEPT_SLOT);
+  const [after, setAfter] = useState<SlotDraft>(KEPT_SLOT);
+  const [slotErrors, setSlotErrors] = useState<Record<SlotName, string | null>>({
+    before: null,
+    after: null,
+  });
+  const previewUrls = useRef<string[]>([]);
+
+  const existingPaths = [trade?.setup_before_path, trade?.setup_after_path].filter(
+    (path): path is string => Boolean(path),
+  );
+  const { urls: existingUrls, isLoading: imagesLoading } =
+    useSetupImageUrls(existingPaths);
 
   // Re-populate when switching between "new" and "edit <trade>".
   useEffect(() => {
     form.reset(toFormDefaults(trade));
   }, [trade, form]);
+
+  useEffect(() => {
+    const urls = previewUrls.current;
+    return () => {
+      for (const url of urls) URL.revokeObjectURL(url);
+    };
+  }, []);
 
   // Live PnL preview (useWatch subscribes without re-rendering on every field)
   const [side, entry, exit, size] = useWatch({
@@ -107,8 +144,52 @@ export function TradeForm({
       })
     : null;
 
+  function selectSlot(slot: SlotName, file: File) {
+    try {
+      extensionForSetupImage(file);
+    } catch (err) {
+      setSlotErrors((prev) => ({
+        ...prev,
+        [slot]: err instanceof Error ? err.message : "Could not use that image.",
+      }));
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    previewUrls.current.push(previewUrl);
+    const apply = (current: SlotDraft): SlotDraft => {
+      if (current.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return { change: { kind: "replace", file }, previewUrl };
+    };
+    if (slot === "before") setBefore(apply);
+    else setAfter(apply);
+    setSlotErrors((prev) => ({ ...prev, [slot]: null }));
+  }
+
+  function clearSlot(slot: SlotName) {
+    const apply = (current: SlotDraft): SlotDraft => {
+      if (current.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return { change: { kind: "remove" }, previewUrl: null };
+    };
+    if (slot === "before") setBefore(apply);
+    else setAfter(apply);
+    setSlotErrors((prev) => ({ ...prev, [slot]: null }));
+  }
+
+  function previewFor(
+    draft: SlotDraft,
+    existingPath: string | null | undefined,
+  ): string | null {
+    if (draft.change.kind === "replace") return draft.previewUrl;
+    if (draft.change.kind === "remove" || !existingPath) return null;
+    return existingUrls[existingPath] ?? null;
+  }
+
   async function handleSubmit(values: TradeFormValues) {
-    await onSubmit(toTradeInput(values));
+    await onSubmit(toTradeInput(values), {
+      before: before.change,
+      after: after.change,
+    });
   }
 
   return (
@@ -238,6 +319,35 @@ export function TradeForm({
           />
           <FieldError errors={[errors.notes]} />
         </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SetupImageSlot
+            id="setup-before"
+            label="Before"
+            previewUrl={previewFor(before, trade?.setup_before_path)}
+            isLoading={
+              imagesLoading &&
+              before.change.kind === "keep" &&
+              Boolean(trade?.setup_before_path)
+            }
+            error={slotErrors.before}
+            onSelect={(file) => selectSlot("before", file)}
+            onClear={() => clearSlot("before")}
+          />
+          <SetupImageSlot
+            id="setup-after"
+            label="After"
+            previewUrl={previewFor(after, trade?.setup_after_path)}
+            isLoading={
+              imagesLoading &&
+              after.change.kind === "keep" &&
+              Boolean(trade?.setup_after_path)
+            }
+            error={slotErrors.after}
+            onSelect={(file) => selectSlot("after", file)}
+            onClear={() => clearSlot("after")}
+          />
+        </div>
 
         {/* PnL preview */}
         <div className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/60 px-4 py-3">

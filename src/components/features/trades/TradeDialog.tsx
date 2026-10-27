@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Trade, TradeInput } from "@/types/trade";
+import type { SetupImageChanges, Trade, TradeInput } from "@/types/trade";
 import { TradeForm } from "./TradeForm";
 
 interface TradeDialogProps {
@@ -15,7 +15,7 @@ interface TradeDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Trade being edited; omit/null for "new trade". */
   trade?: Trade | null;
-  onSubmit: (input: TradeInput) => Promise<void>;
+  onSubmit: (input: TradeInput, images: SetupImageChanges) => Promise<void>;
 }
 
 export function TradeDialog({
@@ -28,7 +28,7 @@ export function TradeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-zinc-800 bg-zinc-900 text-zinc-100 sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-zinc-800 bg-zinc-900 text-zinc-100 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {isEdit ? "Edit trade" : "Log a new trade"}
@@ -39,11 +39,14 @@ export function TradeDialog({
               : "Record a closed position. PnL and result are calculated for you."}
           </DialogDescription>
         </DialogHeader>
-        <TradeForm
-          trade={trade}
-          onSubmit={onSubmit}
-          onCancel={() => onOpenChange(false)}
-        />
+        {open ? (
+          <TradeForm
+            key={trade?.id ?? "new"}
+            trade={trade}
+            onSubmit={onSubmit}
+            onCancel={() => onOpenChange(false)}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

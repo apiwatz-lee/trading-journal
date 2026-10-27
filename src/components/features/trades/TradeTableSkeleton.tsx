@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-const COLUMN_WIDTHS = ["w-32", "w-24", "w-14", "w-20", "w-20", "w-16", "w-24", "w-14", "w-6"];
+const COLUMN_WIDTHS = ["w-32", "w-24", "w-14", "w-20", "w-20", "w-16", "w-24", "w-14", "w-16", "w-6"];
 
 export function TradeTableSkeleton({ rows = 6 }: { rows?: number }) {
   return (

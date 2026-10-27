@@ -5,7 +5,7 @@ import { AlertTriangle, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { useTrades } from "@/hooks/useTrades";
-import type { Trade, TradeInput } from "@/types/trade";
+import type { SetupImageChanges, Trade, TradeInput } from "@/types/trade";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TradeTable } from "./TradeTable";
@@ -30,13 +30,13 @@ export function TradesView() {
   const openEdit = (trade: Trade) => setDialog({ mode: "edit", trade });
   const closeDialog = () => setDialog({ mode: "closed" });
 
-  async function handleSubmit(input: TradeInput) {
+  async function handleSubmit(input: TradeInput, images: SetupImageChanges) {
     try {
       if (dialog.mode === "edit") {
-        await updateTrade(dialog.trade.id, input);
+        await updateTrade(dialog.trade.id, input, images);
         toast.success("Trade updated");
       } else {
-        await createTrade(input);
+        await createTrade(input, images);
         toast.success("Trade logged");
       }
       closeDialog();
@@ -47,7 +47,7 @@ export function TradesView() {
 
   async function handleDelete(trade: Trade) {
     try {
-      await deleteTrade(trade.id);
+      await deleteTrade(trade);
       toast.success("Trade deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete trade");

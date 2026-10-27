@@ -22,9 +22,27 @@ export interface Trade {
   /** ISO 8601 timestamp */
   entry_date: string;
   notes: string | null;
+  /** Object path in the private `trade-setups` bucket, or null. */
+  setup_before_path: string | null;
+  /** Object path in the private `trade-setups` bucket, or null. */
+  setup_after_path: string | null;
   /** ISO 8601 timestamp */
   created_at: string;
 }
+
+/**
+ * What happened to one setup-image slot since the form was opened.
+ * Files stay out of `TradeInput` and are uploaded only after the row exists.
+ */
+export type SetupImageChange =
+  | { kind: "keep" }
+  | { kind: "remove" }
+  | { kind: "replace"; file: File };
+
+export type SetupImageChanges = {
+  before: SetupImageChange;
+  after: SetupImageChange;
+};
 
 /**
  * What the user submits from the trade form.
@@ -45,7 +63,8 @@ export type TradeInput = Pick<
 export type TradeInsert = TradeInput &
   Pick<Trade, "pnl" | "status"> & { user_id: string };
 
-export type TradeUpdate = Omit<TradeInsert, "user_id">;
+export type TradeUpdate = Omit<TradeInsert, "user_id"> &
+  Partial<Pick<Trade, "setup_before_path" | "setup_after_path">>;
 
 export interface TradeStats {
   totalPnl: number;
