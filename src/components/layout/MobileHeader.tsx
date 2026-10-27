@@ -28,7 +28,7 @@ export function MobileHeader() {
           </Button>
         </form>
       </div>
-      <div className="px-3 pb-3 [&_nav]:flex-row [&_nav]:gap-2">
+      <div className="px-3 pb-3 [&_nav]:flex-row [&_nav]:flex-wrap [&_nav]:gap-2">
         <SidebarNav />
       </div>
     </header>

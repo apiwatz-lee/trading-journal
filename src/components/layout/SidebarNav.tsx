@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListOrdered, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, ListOrdered, Shield, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
-  href: "/dashboard" | "/trades";
+  href: "/dashboard" | "/trades" | "/risk";
   label: string;
   icon: LucideIcon;
 }
@@ -14,6 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/trades", label: "Trades", icon: ListOrdered },
+  { href: "/risk", label: "Risk", icon: Shield },
 ];
 
 export function SidebarNav() {
